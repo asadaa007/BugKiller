@@ -1,6 +1,8 @@
 import { useNavigate } from 'react-router-dom';
+import { useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useProjects } from '../context/ProjectContext';
+import { useTeams } from '../context/TeamContext';
 import Navigation from '../components/layout/Navigation';
 import BreadcrumbNew from '../components/common/BreadcrumbNew';
 import BugForm from '../components/dashboard/BugForm';
@@ -11,9 +13,21 @@ const BugAdd = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { projects } = useProjects();
+  const { teams } = useTeams();
 
-  // Role-based permissions
-  const canCreateBug = user?.role === 'super_admin' || user?.role === 'manager' || user?.role === 'team_lead';
+  // Role-based permissions: allow super_admin/manager/team_lead; allow team_member only if QC/QA team
+  const canCreateBug = useMemo(() => {
+    if (!user) return false;
+    if (user.role === 'super_admin' || user.role === 'manager' || user.role === 'team_lead') return true;
+    if (user.role === 'team_member') {
+      const team = user.teamId ? teams.find(t => t.id === user.teamId) : undefined;
+      if (team?.name) {
+        const name = team.name.toLowerCase();
+        return name.includes('qa') || name.includes('qc') || name.includes('quality');
+      }
+    }
+    return false;
+  }, [user, teams]);
 
   if (!canCreateBug) {
     return (

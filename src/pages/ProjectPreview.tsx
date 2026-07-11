@@ -40,7 +40,20 @@ const ProjectPreview = () => {
 
   // Role-based permissions
   const canManageProject = user?.role === 'super_admin' || user?.role === 'manager' || user?.role === 'team_lead';
-  const canCreateBug = user?.role === 'super_admin' || user?.role === 'manager' || user?.role === 'team_lead';
+  
+  // Role-based permissions: allow super_admin/manager/team_lead; allow team_member only if QC/QA team
+  const canCreateBug = useMemo(() => {
+    if (!user) return false;
+    if (user.role === 'super_admin' || user.role === 'manager' || user.role === 'team_lead') return true;
+    if (user.role === 'team_member') {
+      const team = user.teamId ? teams.find(t => t.id === user.teamId) : undefined;
+      if (team?.name) {
+        const name = team.name.toLowerCase();
+        return name.includes('qa') || name.includes('qc') || name.includes('quality');
+      }
+    }
+    return false;
+  }, [user, teams]);
 
   const [teamName, setTeamName] = useState<string>('Loading...');
   const [managerName, setManagerName] = useState<string>('-');

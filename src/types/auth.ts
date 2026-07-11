@@ -15,6 +15,7 @@ export interface AppUser {
 export interface Team {
   id: string;
   name: string;
+  slug?: string; // URL-friendly slug
   description?: string;
   managerId: string; // User ID of the team manager
   teamLeadIds?: string[]; // Array of team lead user IDs

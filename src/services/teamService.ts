@@ -15,6 +15,7 @@ import {
 } from 'firebase/firestore';
 import type { Team, TeamWithDetails, AppUser } from '../types/auth';
 import { projectService } from './projectService';
+import { slugify, generateUniqueSlug } from '../utils/slugify';
 
 const TEAMS_COLLECTION = 'teams';
 const USERS_COLLECTION = 'users';
@@ -55,8 +56,15 @@ export const createTeam = async (teamData: CreateTeamData): Promise<string> => {
       });
     }
 
+    // Generate unique slug
+    const baseSlug = slugify(teamData.name);
+    const allTeams = await getAllTeams();
+    const existingSlugs = allTeams.map(t => t.slug || '').filter(Boolean);
+    const uniqueSlug = generateUniqueSlug(baseSlug, existingSlugs);
+
     const teamDoc = await addDoc(collection(db, TEAMS_COLLECTION), {
       ...teamData,
+      slug: uniqueSlug,
       members,
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -263,6 +271,31 @@ export const getTeamById = async (teamId: string): Promise<Team | null> => {
   } catch (error) {
     console.error('Error getting team:', error);
     throw new Error('Failed to get team');
+  }
+};
+
+// Get team by slug
+export const getTeamBySlug = async (slug: string): Promise<Team | null> => {
+  try {
+    const q = query(
+      collection(db, TEAMS_COLLECTION),
+      where('slug', '==', slug)
+    );
+    const querySnapshot = await getDocs(q);
+    
+    if (!querySnapshot.empty) {
+      const teamDoc = querySnapshot.docs[0];
+      return {
+        id: teamDoc.id,
+        ...teamDoc.data(),
+        createdAt: teamDoc.data().createdAt?.toDate() || new Date(),
+        updatedAt: teamDoc.data().updatedAt?.toDate() || new Date(),
+      } as Team;
+    }
+    return null;
+  } catch (error) {
+    console.error('Error getting team by slug:', error);
+    throw new Error('Failed to get team by slug');
   }
 };
 

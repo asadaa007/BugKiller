@@ -213,7 +213,7 @@ export const projectService = {
     }
   },
 
-  // Get projects by team ID
+  // Get projects by team ID (supports both legacy teamId and new teamIds array)
   async getProjectsByTeam(teamId: string): Promise<Project[]> {
     try {
       const querySnapshot = await getDocs(collection(db, PROJECTS_COLLECTION));
@@ -228,7 +228,11 @@ export const projectService = {
       }) as Project[];
       
       // Filter projects assigned to the specified team
-      return allProjects.filter(project => project.teamId === teamId);
+      // Support both legacy teamId and new teamIds array
+      return allProjects.filter(project => 
+        project.teamId === teamId || 
+        (project.teamIds && project.teamIds.includes(teamId))
+      );
     } catch (error) {
       console.error('Error getting projects by team:', error);
       throw new Error('Failed to get projects by team');

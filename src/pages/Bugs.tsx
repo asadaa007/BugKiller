@@ -3,6 +3,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useBugs } from '../context/BugContext';
 import { useProjects } from '../context/ProjectContext';
 import { useAuth } from '../context/AuthContext';
+import { useTeams } from '../context/TeamContext';
 import { getAllUsers } from '../services/userService';
 import type { AppUser } from '../types/auth';
 import Navigation from '../components/layout/Navigation';
@@ -19,13 +20,25 @@ const Bugs = () => {
   const { bugs, loading, updateBug, deleteBug, refreshBugs } = useBugs();
   const { projects } = useProjects();
   const { user } = useAuth();
+  const { teams } = useTeams();
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Role-based permissions
-  const canCreateBug = user?.role === 'super_admin' || user?.role === 'manager' || user?.role === 'team_lead';
+  // Role-based permissions: allow super_admin/manager/team_lead; allow team_member only if QC/QA team
+  const canCreateBug = useMemo(() => {
+    if (!user) return false;
+    if (user.role === 'super_admin' || user.role === 'manager' || user.role === 'team_lead') return true;
+    if (user.role === 'team_member') {
+      const team = user.teamId ? teams.find(t => t.id === user.teamId) : undefined;
+      if (team?.name) {
+        const name = team.name.toLowerCase();
+        return name.includes('qa') || name.includes('qc') || name.includes('quality');
+      }
+    }
+    return false;
+  }, [user, teams]);
   const [filters, setFilters] = useState<BugFiltersType>({});
   const [allUsers, setAllUsers] = useState<AppUser[]>([]);
   

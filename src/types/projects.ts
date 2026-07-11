@@ -13,7 +13,8 @@ export interface Project {
   settings: ProjectSettings;
   status: 'active' | 'inactive' | 'on_hold' | 'discontinued' | 'complete';
   statusReason?: string | null;
-  teamId?: string; // Assigned team
+  teamId?: string; // Legacy: single team assignment (for backward compatibility)
+  teamIds?: string[]; // Assigned teams (supports multiple teams)
   teamLeadIds?: string[]; // Array of team lead user IDs
   bugs?: Bug[]; // Array of bugs for this project
   // Timeline fields
