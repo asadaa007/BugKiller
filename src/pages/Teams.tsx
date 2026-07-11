@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTeams } from '../context/TeamContext';
 import { useBugs } from '../context/BugContext';
@@ -8,7 +9,6 @@ import Navigation from '../components/layout/Navigation';
 import BreadcrumbNew from '../components/common/BreadcrumbNew';
 import Loading from '../components/common/Loading';
 import TeamModal from '../components/projects/TeamModal';
-import TeamDetailsModal from '../components/projects/TeamDetailsModal';
 import { TeamCard } from '../components/common';
 import { getUserNamesByIds, getUserDetailsByIds } from '../services/userService';
 import { projectService } from '../services/projectService';
@@ -23,12 +23,12 @@ import { Button } from '../components/common/buttons';
 
 const Teams = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const { teams, loading: teamsLoading, updateTeam, createTeam } = useTeams();
   const { bugs } = useBugs();
   const { projects } = useProjects();
   const [searchTerm, setSearchTerm] = useState('');
   const [teamModalOpen, setTeamModalOpen] = useState(false);
-  const [teamDetailsModalOpen, setTeamDetailsModalOpen] = useState(false);
   const [selectedTeam, setSelectedTeam] = useState<Team | null>(null);
   const [teamModalMode, setTeamModalMode] = useState<'create' | 'edit'>('create');
   const [managerNames, setManagerNames] = useState<Record<string, string>>({});
@@ -125,8 +125,11 @@ const Teams = () => {
   };
 
   const handleViewTeam = (team: Team) => {
-    setSelectedTeam(team);
-    setTeamDetailsModalOpen(true);
+    if (team.slug) {
+      navigate(`/t/${team.slug}`);
+    } else {
+      navigate(`/teams/${encodeURIComponent(team.id)}`);
+    }
   };
 
 
@@ -289,17 +292,6 @@ const Teams = () => {
         onSave={handleSaveTeam}
         team={selectedTeam || undefined}
         mode={teamModalMode}
-      />
-
-      {/* Team Details Modal */}
-      <TeamDetailsModal
-        isOpen={teamDetailsModalOpen}
-        onClose={() => setTeamDetailsModalOpen(false)}
-        team={selectedTeam}
-        managerName={selectedTeam ? managerNames[selectedTeam.managerId] : undefined}
-        teamLeadNames={selectedTeam?.teamLeadIds ? selectedTeam.teamLeadIds.map(id => teamLeadNames[id]).filter(Boolean) : []}
-        totalBugs={0} // TODO: Calculate actual total bugs
-        bugsResolved={0} // TODO: Calculate actual bugs resolved
       />
     </div>
   );

@@ -40,7 +40,7 @@ const ProjectEdit = () => {
     shortDescription: '',
     description: '',
     status: 'active' as Project['status'],
-    teamId: '' as string | undefined,
+    teamIds: [] as string[],
     teamLeadIds: [] as string[],
     startDate: '',
     expectedEndDate: '',
@@ -78,12 +78,14 @@ const ProjectEdit = () => {
       
       if (foundProject) {
         setProject(foundProject);
+        // Handle both legacy teamId and new teamIds array
+        const teamIds = foundProject.teamIds || (foundProject.teamId ? [foundProject.teamId] : []);
         setFormData({
           name: foundProject.name,
           shortDescription: foundProject.shortDescription || '',
           description: foundProject.description,
           status: foundProject.status,
-          teamId: foundProject.teamId || '',
+          teamIds: teamIds,
           teamLeadIds: foundProject.teamLeadIds || [],
           startDate: foundProject.startDate ? new Date(foundProject.startDate).toISOString().split('T')[0] : '',
           expectedEndDate: foundProject.expectedEndDate ? new Date(foundProject.expectedEndDate).toISOString().split('T')[0] : '',
@@ -127,31 +129,58 @@ const ProjectEdit = () => {
     loadTeamLeadNames();
   }, []);
 
+  const handleTeamToggle = (teamId: string) => {
+    setFormData(prev => ({
+      ...prev,
+      teamIds: prev.teamIds.includes(teamId)
+        ? prev.teamIds.filter(id => id !== teamId)
+        : [...prev.teamIds, teamId]
+    }));
+  };
+
   // Update available team leads when team selection changes
   useEffect(() => {
-    if (formData.teamId) {
-      const selectedTeam = teams.find(team => team.id === formData.teamId);
-      if (selectedTeam && selectedTeam.teamLeadIds) {
-        const teamLeads = selectedTeam.teamLeadIds.map(leadId => ({
-          id: leadId,
-          name: teamLeadNames[leadId] || 'Unknown'
+    if (formData.teamIds && formData.teamIds.length > 0) {
+      // Get all team leads from all selected teams
+      const allTeamLeadIds = new Set<string>();
+      formData.teamIds.forEach(teamId => {
+        const selectedTeam = teams.find(team => team.id === teamId);
+        if (selectedTeam && selectedTeam.teamLeadIds) {
+          selectedTeam.teamLeadIds.forEach(leadId => allTeamLeadIds.add(leadId));
+        }
+      });
+      
+      const teamLeads = Array.from(allTeamLeadIds).map(leadId => ({
+        id: leadId,
+        name: teamLeadNames[leadId] || 'Unknown'
+      }));
+      
+      setAvailableTeamLeads(teamLeads);
+      
+      // Auto-select if there's only one team lead and no current selection
+      if (teamLeads.length === 1 && formData.teamLeadIds.length === 0) {
+        setFormData(prev => ({
+          ...prev,
+          teamLeadIds: [teamLeads[0].id]
         }));
-        setAvailableTeamLeads(teamLeads);
-        
-        // Auto-select if there's only one team lead and no current selection
-        if (teamLeads.length === 1 && formData.teamLeadIds.length === 0) {
+      } else if (formData.teamLeadIds.length > 0) {
+        // Remove team leads that are no longer in selected teams
+        const validTeamLeadIds = formData.teamLeadIds.filter(id => allTeamLeadIds.has(id));
+        if (validTeamLeadIds.length !== formData.teamLeadIds.length) {
           setFormData(prev => ({
             ...prev,
-            teamLeadIds: [teamLeads[0].id]
+            teamLeadIds: validTeamLeadIds
           }));
         }
-      } else {
-        setAvailableTeamLeads([]);
       }
     } else {
       setAvailableTeamLeads([]);
+      setFormData(prev => ({
+        ...prev,
+        teamLeadIds: []
+      }));
     }
-  }, [formData.teamId, teams, teamLeadNames]);
+  }, [formData.teamIds, teams, teamLeadNames]);
 
   const handleChange = (field: string, value: any) => {
     if (field.includes('.')) {
@@ -528,22 +557,35 @@ const ProjectEdit = () => {
                 </select>
               </div>
 
+              {/* Team Selection */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Assigned Team
+                  Assigned Teams
                 </label>
-                <select
-                  value={formData.teamId || ''}
-                  onChange={(e) => handleChange('teamId', e.target.value || undefined)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/50"
-                >
-                  <option value="">Select a team</option>
-                  {availableTeams.map((team) => (
-                    <option key={team.id} value={team.id}>
-                      {team.name}
-                    </option>
-                  ))}
-                </select>
+                <div className="space-y-2 max-h-40 overflow-y-auto border border-gray-300 rounded-lg p-3">
+                  {availableTeams.length === 0 ? (
+                    <p className="text-sm text-gray-500">No teams available</p>
+                  ) : (
+                    availableTeams.map((team) => (
+                      <label key={team.id} className="flex items-center space-x-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={formData.teamIds.includes(team.id)}
+                          onChange={() => handleTeamToggle(team.id)}
+                          className="rounded border-gray-300 text-primary focus:ring-primary/20"
+                        />
+                        <span className="text-sm text-gray-700">
+                          {team.name}
+                        </span>
+                      </label>
+                    ))
+                  )}
+                </div>
+                {formData.teamIds.length > 0 && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    Selected: {formData.teamIds.length} team(s)
+                  </p>
+                )}
               </div>
 
               {/* Team Lead Selection */}

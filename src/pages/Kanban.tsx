@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useProjects } from '../context/ProjectContext';
 import { useBugs } from '../context/BugContext';
 import { useAuth } from '../context/AuthContext';
+import { useTeams } from '../context/TeamContext';
 import { getAllUsers } from '../services/userService';
 import type { AppUser } from '../types/auth';
 import Navigation from '../components/layout/Navigation';
@@ -46,12 +47,24 @@ const Kanban = () => {
   const { projects, loading: projectsLoading } = useProjects();
   const { bugs, loading: bugsLoading, updateBug, deleteBug } = useBugs();
   const { user } = useAuth();
+  const { teams } = useTeams();
   const [searchParams] = useSearchParams();
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Role-based permissions
-  const canCreateBug = user?.role === 'super_admin' || user?.role === 'manager' || user?.role === 'team_lead';
+  // Role-based permissions: allow super_admin/manager/team_lead; allow team_member only if QC/QA team
+  const canCreateBug = useMemo(() => {
+    if (!user) return false;
+    if (user.role === 'super_admin' || user.role === 'manager' || user.role === 'team_lead') return true;
+    if (user.role === 'team_member') {
+      const team = user.teamId ? teams.find(t => t.id === user.teamId) : undefined;
+      if (team?.name) {
+        const name = team.name.toLowerCase();
+        return name.includes('qa') || name.includes('qc') || name.includes('quality');
+      }
+    }
+    return false;
+  }, [user, teams]);
   
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedBug, setSelectedBug] = useState<BugType | null>(null);

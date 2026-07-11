@@ -17,6 +17,7 @@ import BugEdit from '../pages/BugEdit';
 import Settings from '../pages/Settings';
 import UserManagement from '../pages/UserManagement';
 import Teams from '../pages/Teams';
+import TeamDetail from '../pages/TeamDetail';
 import Activities from '../pages/Activities';
 import ButtonTest from '../pages/ButtonTest';
 import RoleBasedRoute from '../components/common/RoleBasedRoute';
@@ -179,6 +180,22 @@ const AppRouter = () => {
         element={
           <RoleBasedRoute allowedRoles={['super_admin', 'manager']}>
             <Teams />
+          </RoleBasedRoute>
+        }
+      />
+      <Route
+        path="/teams/:teamId"
+        element={
+          <RoleBasedRoute allowedRoles={['super_admin', 'manager']}>
+            <TeamDetail />
+          </RoleBasedRoute>
+        }
+      />
+      <Route
+        path="/t/:slug"
+        element={
+          <RoleBasedRoute allowedRoles={['super_admin', 'manager']}>
+            <TeamDetail />
           </RoleBasedRoute>
         }
       />
